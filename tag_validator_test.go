@@ -1,9 +1,9 @@
 package tag_validator
 
 import (
-	"fmt"
-	"github.com/google/uuid"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestValidateStruct(t *testing.T) {
@@ -12,9 +12,33 @@ func TestValidateStruct(t *testing.T) {
 		Name string `validate:"string,min=2,max=10"`
 		Age  int    `validate:"number,min=18,max=20"`
 	}
-	user := User{Id: uuid.New().String(),Name: "y", Age: 5}
-	fmt.Println("Errors:")
-	for i, err := range ValidateStruct("", user) {
-		fmt.Printf("\t%d. %s\n", i+1, err.Error())
-	}
+
+	user := User{Id: "ba6516aa-3cb8-4592-b3cf-ba3ad9e176ae", Name: "name", Age: 19}
+	errs := ValidateStruct("", user)
+
+	assert.Empty(t, errs)
+
+	user = User{Id: "ba3ad9e176ae", Name: "y", Age: 8}
+	errs = ValidateStruct("", user)
+
+	assert.NotEmpty(t, errs)
+	assert.Equal(t, 3, len(errs))
+
+	user = User{Id: "ba6516aa-3cb8-4592-b3cf-ba3ad9e176ae", Name: "name", Age: 29}
+	errs = ValidateStruct("", user)
+
+	assert.NotEmpty(t, errs)
+	assert.Equal(t, 1, len(errs))
+
+	user = User{Id: "ba6516aa-3cb8-4592-b3cf-ba3ad9e176ae", Name: "", Age: 19}
+	errs = ValidateStruct("", user)
+
+	assert.NotEmpty(t, errs)
+	assert.Equal(t, 1, len(errs))
+
+	user = User{Id: "ba6516aa-3cb8-4592-b3cf-ba3ad9e176ae", Name: "ba6516aa-3cb8-4592-b3cf-ba3ad9e176ae", Age: 19}
+	errs = ValidateStruct("", user)
+
+	assert.NotEmpty(t, errs)
+	assert.Equal(t, 1, len(errs))
 }
