@@ -7,7 +7,7 @@ type numberValidator struct {
 	max int
 }
 
-func (v numberValidator) validate(cid string, val interface{}) error{
+func (v numberValidator) validate(val interface{}) error {
 	num := val.(int)
 	if num < v.min {
 		return fmt.Errorf("should be greater than %v", v.min)

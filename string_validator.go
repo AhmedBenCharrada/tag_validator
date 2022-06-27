@@ -2,13 +2,12 @@ package tag_validator
 
 import "fmt"
 
-
 type stringValidator struct {
-	min     int
-	max     int
+	min int
+	max int
 }
 
-func (v stringValidator) validate(cid string, val interface{}) error {
+func (v stringValidator) validate(val interface{}) error {
 	num := len(val.(string))
 	if num == 0 {
 		return fmt.Errorf("should not be empty")
