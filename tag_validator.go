@@ -6,8 +6,6 @@ import (
 	"strings"
 )
 
-// Todo add error code
-
 // the validator tag name
 // fields to be validated need to be tagged with this tag
 const tagName = "validate"
@@ -15,8 +13,7 @@ const tagName = "validate"
 // validator an interface that every tag validator should implement
 type validator interface {
 	// Validate checks whether the validated field is valid or not
-	// Todo: this should return our custom error; so with tag need to provide the error-code (error-code family) for the specific field;
-	validate(cid string, in interface{}) error
+	validate(in interface{}) error
 }
 
 // ValidateStruct travers all the struct fields and validates attributes marked to be validated
@@ -38,7 +35,7 @@ func ValidateStruct(cid string, s interface{}) []error {
 			continue
 		}
 		// Perform validation
-		err := validator.validate(cid, v.Field(i).Interface())
+		err := validator.validate(v.Field(i).Interface())
 		// Append error to results
 		if err != nil {
 			errs = append(errs, fmt.Errorf("%s %s", v.Type().Field(i).Name, err.Error()))
