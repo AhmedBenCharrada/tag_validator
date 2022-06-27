@@ -17,7 +17,7 @@ type number interface {
 }
 
 // ValidateStruct traverse all the struct fields and validates attributes marked to be validated
-func ValidateStruct(cid string, s interface{}) []error {
+func ValidateStruct(s interface{}) []error {
 	// ValueOf returns a Value representing the run-time data
 	v := reflect.ValueOf(s)
 	errs := make([]error, 0, v.NumField())
