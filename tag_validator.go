@@ -8,8 +8,31 @@ import (
 	"strings"
 )
 
-// the validator tag name
-// fields to be validated need to be tagged with this tag
+// The validator tag name
+//
+// Fields to be validated need to be tagged with this tag.
+// For example having the struct:
+//
+// type User struct {
+// 	ID   	 string `validate:"uuid"`
+// 	Name     string `validate:"string,min=2,max=10,pattern=^[a-zA-Z]+$"`
+//	LastName string `validate:"string,required,min=2,max=10"`
+// 	Age  	 int    `validate:"number,min=18,max=20"`
+// }
+//
+// a uuid validator will be applied on the ID field;
+// a string validator will be applied to the Name field and
+// a number validator for Age field where min and max are parameter being passed to the validator
+//
+// Validator parameters should be added according to the validator type
+// - number:
+//		min={value}: define the minimum allowed value.
+//		max={value}: define the maximum allowed value.
+// - string:
+//		min={value}: define the minimum string length.
+//		max={value}: define the maximum string length.
+//		required: define whether this filed is required and cannot be empty.
+//		pattern: define the patter the value should match.
 const tagName = "validate"
 
 type number interface {
