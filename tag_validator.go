@@ -46,21 +46,29 @@ func check(tag string, item interface{}) error {
 	case "number":
 		var min int
 		var max int
-		arg := strings.Join(args[1:], ",")
-		_, _ = fmt.Sscanf(arg, "min=%v", &min)
-		_, _ = fmt.Sscanf(arg, "max=%v", &max)
+		for _, arg := range args[1:] {
+			_, _ = fmt.Sscanf(arg, "max=%v", &max)
+			_, _ = fmt.Sscanf(arg, "min=%v", &min)
+		}
 
 		return validateNumber(min, max, item.(int))
 	case "string":
 		var min int
 		var max int
 		var required bool
-		arg := strings.Join(args[1:], ",")
-		_, _ = fmt.Sscanf(arg, "min=%v", &min)
-		_, _ = fmt.Sscanf(arg, "max=%v", &max)
-		_, _ = fmt.Sscanf(arg, "required=%t", &required)
+		var pattern string
 
-		return validateString(min, max, required, item.(string))
+		for _, arg := range args[1:] {
+			_, _ = fmt.Sscanf(arg, "max=%v", &max)
+			_, _ = fmt.Sscanf(arg, "min=%v", &min)
+			_, _ = fmt.Sscanf(arg, "pattern=%s", &pattern)
+
+			if !required {
+				required = arg == "required"
+			}
+		}
+
+		return validateString(min, max, required, pattern, item.(string))
 	case "uuid":
 		return validateUUID(item.(string))
 	}
@@ -80,7 +88,7 @@ func validateNumber[T number](min, max, val T) error {
 	return nil
 }
 
-func validateString(min int, max int, required bool, val string) error {
+func validateString(min int, max int, required bool, pattern string, val string) error {
 	num := len(val)
 
 	if num == 0 && required {
@@ -96,15 +104,26 @@ func validateString(min int, max int, required bool, val string) error {
 		return fmt.Errorf("should be less than %v", max)
 	}
 
+	if len(pattern) > 0 {
+		return validateRegex(val, pattern)
+	}
+
 	return nil
 }
 
 func validateUUID(id string) error {
-	r := regexp.MustCompile("" +
+	return validateRegex(
+		id,
 		"^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$",
 	)
-	if !r.MatchString(id) {
-		return errors.New("invalid uuid")
+}
+
+func validateRegex(val, pattern string) error {
+	r := regexp.MustCompile("\\b" + pattern + "\\b")
+
+	if !r.MatchString(val) {
+		return errors.New("pattern does not match")
 	}
+
 	return nil
 }
