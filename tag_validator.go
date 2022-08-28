@@ -46,15 +46,21 @@ func check(tag string, item interface{}) error {
 	case "number":
 		var min int
 		var max int
-		_, _ = fmt.Sscanf(strings.Join(args[1:], ","), "min=%d,max=%d", &min, &max)
+		arg := strings.Join(args[1:], ",")
+		_, _ = fmt.Sscanf(arg, "min=%v", &min)
+		_, _ = fmt.Sscanf(arg, "max=%v", &max)
 
 		return validateNumber(min, max, item.(int))
 	case "string":
 		var min int
 		var max int
-		_, _ = fmt.Sscanf(strings.Join(args[1:], ","), "min=%d,max=%d", &min, &max)
+		var required bool
+		arg := strings.Join(args[1:], ",")
+		_, _ = fmt.Sscanf(arg, "min=%v", &min)
+		_, _ = fmt.Sscanf(arg, "max=%v", &max)
+		_, _ = fmt.Sscanf(arg, "required=%t", &required)
 
-		return validateString(min, max, item.(string))
+		return validateString(min, max, required, item.(string))
 	case "uuid":
 		return validateUUID(item.(string))
 	}
@@ -74,9 +80,10 @@ func validateNumber[T number](min, max, val T) error {
 	return nil
 }
 
-func validateString(min int, max int, val string) error {
+func validateString(min int, max int, required bool, val string) error {
 	num := len(val)
-	if num == 0 {
+
+	if num == 0 && required {
 		return fmt.Errorf("should not be empty")
 	}
 
