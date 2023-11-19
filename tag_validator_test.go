@@ -19,7 +19,12 @@ func TestValidateStruct(t *testing.T) {
 	validUUID := "ba6516aa-3cb8-4592-b3cf-ba3ad9e176ae"
 
 	user := User{Id: validUUID, Name: "name", LastName: "lastName", Age: 19, Height: 180, Weight: 75}
-	errs := ValidateStruct(user)
+	errs := ValidateStruct(user, CustomValidator{
+		Tag: "text",
+		Validator: func(_ interface{}, _ []string) error {
+			return nil
+		},
+	})
 
 	assert.Empty(t, errs)
 

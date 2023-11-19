@@ -13,34 +13,57 @@ import (
 // Fields to be validated need to be tagged with this tag.
 // For example having the struct:
 //
-// type User struct {
-// 	ID   	 string `validate:"uuid"`
-// 	Name     string `validate:"string,min=2,max=10,pattern=^[a-zA-Z]+$"`
-//	LastName string `validate:"string,required,min=2,max=10"`
-// 	Age  	 int    `validate:"number,min=18,max=20"`
-// }
+//	type User struct {
+//		ID   	 string `validate:"uuid"`
+//		Name     string `validate:"string,min=2,max=10,pattern=^[a-zA-Z]+$"`
+//		LastName string `validate:"string,required,min=2,max=10"`
+//		Age  	 int    `validate:"number,min=18,max=20"`
+//	}
 //
 // a uuid validator will be applied on the ID field;
 // a string validator will be applied to the Name field and
 // a number validator for Age field where min and max are parameter being passed to the validator
 //
 // Validator parameters should be added according to the validator type
-// - number:
-//		min={value}: define the minimum allowed value.
-//		max={value}: define the maximum allowed value.
-// - string:
-//		min={value}: define the minimum string length.
-//		max={value}: define the maximum string length.
-//		required: define whether this filed is required and cannot be empty.
-//		pattern: define the patter the value should match.
+//   - number:
+//     min={value}: define the minimum allowed value.
+//     max={value}: define the maximum allowed value.
+//   - string:
+//     min={value}: define the minimum string length.
+//     max={value}: define the maximum string length.
+//     required: define whether this filed is required and cannot be empty.
+//     pattern: define the patter the value should match.
 const tagName = "validate"
 
 type number interface {
 	int | int64
 }
 
+// Validator ..
+type Validator func(interface{}, []string) error
+
+// CustomValidator ..
+type CustomValidator struct {
+	Tag       string
+	Validator Validator
+}
+
 // ValidateStruct traverse all the struct fields and validates attributes marked to be validated
-func ValidateStruct(s interface{}) []error {
+func ValidateStruct(s interface{}, opts ...CustomValidator) []error {
+	if reflect.TypeOf(s).Kind() != reflect.Struct {
+		panic("input should be a struct")
+	}
+
+	validators := map[string]Validator{
+		"number": numberValidator,
+		"string": stringValidator,
+		"uuid":   uuidValidator,
+	}
+
+	for _, opt := range opts {
+		validators[opt.Tag] = opt.Validator
+	}
+
 	// ValueOf returns a Value representing the run-time data
 	v := reflect.ValueOf(s)
 	errs := make([]error, 0, v.NumField())
@@ -53,50 +76,61 @@ func ValidateStruct(s interface{}) []error {
 			continue
 		}
 		// Get a validator that corresponds to a tag
-		err := check(tag, v.Field(i).Interface())
+		err := check(validators, tag, v.Field(i).Interface())
 		// Append error to results
 		if err != nil {
 			errs = append(errs, fmt.Errorf("%s %s", v.Type().Field(i).Name, err.Error()))
 		}
 	}
+	if len(errs) == 0 {
+		return nil
+	}
 	return errs
 }
 
-// gets the appropriate validator based on field type
-func check(tag string, item interface{}) error {
-	args := strings.Split(tag, ",")
-	switch args[0] {
-	case "number":
-		var min int
-		var max int
-		for _, arg := range args[1:] {
-			_, _ = fmt.Sscanf(arg, "max=%v", &max)
-			_, _ = fmt.Sscanf(arg, "min=%v", &min)
-		}
-
-		return validateNumber(min, max, item.(int))
-	case "string":
-		var min int
-		var max int
-		var required bool
-		var pattern string
-
-		for _, arg := range args[1:] {
-			_, _ = fmt.Sscanf(arg, "max=%v", &max)
-			_, _ = fmt.Sscanf(arg, "min=%v", &min)
-			_, _ = fmt.Sscanf(arg, "pattern=%s", &pattern)
-
-			if !required {
-				required = arg == "required"
-			}
-		}
-
-		return validateString(min, max, required, pattern, item.(string))
-	case "uuid":
-		return validateUUID(item.(string))
+func numberValidator(val interface{}, args []string) error {
+	var min int
+	var max int
+	for _, arg := range args[1:] {
+		_, _ = fmt.Sscanf(arg, "max=%v", &max)
+		_, _ = fmt.Sscanf(arg, "min=%v", &min)
 	}
 
-	return nil
+	return validateNumber(min, max, val.(int))
+}
+
+func stringValidator(val interface{}, args []string) error {
+	var min int
+	var max int
+	var required bool
+	var pattern string
+
+	for _, arg := range args[1:] {
+		_, _ = fmt.Sscanf(arg, "max=%v", &max)
+		_, _ = fmt.Sscanf(arg, "min=%v", &min)
+		_, _ = fmt.Sscanf(arg, "pattern=%s", &pattern)
+
+		if !required {
+			required = arg == "required"
+		}
+	}
+
+	return validateString(min, max, required, pattern, val.(string))
+}
+
+func uuidValidator(val interface{}, _ []string) error {
+	return validateUUID(val.(string))
+}
+
+// gets the appropriate validator based on field type
+func check(validators map[string]Validator, tag string, item interface{}) error {
+	args := strings.Split(tag, ",")
+	val, ok := validators[args[0]]
+	if !ok || val == nil {
+		return nil
+	}
+
+	return val(item, args)
 }
 
 func validateNumber[T number](min, max, val T) error {
