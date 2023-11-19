@@ -15,65 +15,82 @@ type User struct {
 	Weight   int    `validate:"-"`
 }
 
+type MultiError interface {
+	Error() string
+	Unwrap() []error
+}
+
 func TestValidateStruct(t *testing.T) {
+	assert.Panics(t, func() {
+		_ = ValidateStruct("abc")
+	})
+
 	validUUID := "ba6516aa-3cb8-4592-b3cf-ba3ad9e176ae"
 
 	user := User{Id: validUUID, Name: "name", LastName: "lastName", Age: 19, Height: 180, Weight: 75}
-	errs := ValidateStruct(user, CustomValidator{
+	err := ValidateStruct(user, CustomValidator{
 		Tag: "text",
 		Validator: func(_ interface{}, _ []string) error {
 			return nil
 		},
 	})
 
-	assert.Empty(t, errs)
+	assert.NoError(t, err)
 
 	// invalid ID
 	user = User{Id: "id", Name: "name", LastName: "lastName", Age: 19, Height: 180, Weight: 75}
-	errs = ValidateStruct(user)
+	err = ValidateStruct(user)
 
-	assert.NotEmpty(t, errs)
-	assert.Equal(t, 1, len(errs))
+	multiErr := new(MultiError)
+
+	assert.Error(t, err)
+	assert.ErrorAs(t, err, multiErr)
+	assert.Equal(t, 1, len(err.(MultiError).Unwrap()))
 
 	// invalid name
 	user = User{Id: validUUID, Name: "name007", LastName: "lastName", Age: 19, Height: 180, Weight: 75}
-	errs = ValidateStruct(user)
+	err = ValidateStruct(user)
 
-	assert.NotEmpty(t, errs)
-	assert.Equal(t, 1, len(errs))
+	assert.Error(t, err)
+	assert.ErrorAs(t, err, multiErr)
+	assert.Equal(t, 1, len(err.(MultiError).Unwrap()))
 
 	// name is too long
 	user = User{Id: validUUID, Name: "abcdefghijklmnopqrstuvwxyz", LastName: "lastName", Age: 19, Height: 180, Weight: 75}
-	errs = ValidateStruct(user)
+	err = ValidateStruct(user)
 
-	assert.NotEmpty(t, errs)
-	assert.Equal(t, 1, len(errs))
-
+	assert.Error(t, err)
+	assert.ErrorAs(t, err, multiErr)
+	assert.Equal(t, 1, len(err.(MultiError).Unwrap()))
 	// empty name
 	user = User{Id: validUUID, Name: "", LastName: "lastName", Age: 19}
-	errs = ValidateStruct(user)
+	err = ValidateStruct(user)
 
-	assert.NotEmpty(t, errs)
-	assert.Equal(t, 1, len(errs))
+	assert.Error(t, err)
+	assert.ErrorAs(t, err, multiErr)
+	assert.Equal(t, 1, len(err.(MultiError).Unwrap()))
 
 	// missing required lastName
 	user = User{Id: validUUID, Name: "name", Age: 19, Height: 180, Weight: 75}
-	errs = ValidateStruct(user)
+	err = ValidateStruct(user)
 
-	assert.NotEmpty(t, errs)
-	assert.Equal(t, 1, len(errs))
+	assert.Error(t, err)
+	assert.ErrorAs(t, err, multiErr)
+	assert.Equal(t, 1, len(err.(MultiError).Unwrap()))
 
 	// too old
 	user = User{Id: validUUID, Name: "name", LastName: "lastName", Age: 99, Height: 180, Weight: 75}
-	errs = ValidateStruct(user)
+	err = ValidateStruct(user)
 
-	assert.NotEmpty(t, errs)
-	assert.Equal(t, 1, len(errs))
+	assert.Error(t, err)
+	assert.ErrorAs(t, err, multiErr)
+	assert.Equal(t, 1, len(err.(MultiError).Unwrap()))
 
 	// terribly wrong
 	user = User{Id: "ba3ad9e176ae", Name: "y", LastName: "lastName", Age: 8}
-	errs = ValidateStruct(user)
+	err = ValidateStruct(user)
 
-	assert.NotEmpty(t, errs)
-	assert.Equal(t, 3, len(errs))
+	assert.Error(t, err)
+	assert.ErrorAs(t, err, multiErr)
+	assert.Equal(t, 3, len(err.(MultiError).Unwrap()))
 }

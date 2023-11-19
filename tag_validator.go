@@ -49,7 +49,7 @@ type CustomValidator struct {
 }
 
 // ValidateStruct traverse all the struct fields and validates attributes marked to be validated
-func ValidateStruct(s interface{}, opts ...CustomValidator) []error {
+func ValidateStruct(s interface{}, opts ...CustomValidator) error {
 	if reflect.TypeOf(s).Kind() != reflect.Struct {
 		panic("input should be a struct")
 	}
@@ -82,10 +82,12 @@ func ValidateStruct(s interface{}, opts ...CustomValidator) []error {
 			errs = append(errs, fmt.Errorf("%s %s", v.Type().Field(i).Name, err.Error()))
 		}
 	}
+
 	if len(errs) == 0 {
 		return nil
 	}
-	return errs
+
+	return errors.Join(errs...)
 }
 
 func numberValidator(val interface{}, args []string) error {
