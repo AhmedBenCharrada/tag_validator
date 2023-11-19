@@ -49,7 +49,7 @@ type CustomValidator struct {
 }
 
 // ValidateStruct traverse all the struct fields and validates attributes marked to be validated
-func ValidateStruct(s interface{}, opts ...CustomValidator) error {
+func Validate(s interface{}, opts ...CustomValidator) error {
 	if reflect.TypeOf(s).Kind() != reflect.Struct {
 		panic("input should be a struct")
 	}

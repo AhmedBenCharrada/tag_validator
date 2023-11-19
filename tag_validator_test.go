@@ -1,6 +1,7 @@
-package tag_validator
+package tag_validator_test
 
 import (
+	validator "tag_validator"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -20,15 +21,15 @@ type MultiError interface {
 	Unwrap() []error
 }
 
-func TestValidateStruct(t *testing.T) {
+func TestValidate(t *testing.T) {
 	assert.Panics(t, func() {
-		_ = ValidateStruct("abc")
+		_ = validator.Validate("abc")
 	})
 
 	validUUID := "ba6516aa-3cb8-4592-b3cf-ba3ad9e176ae"
 
 	user := User{Id: validUUID, Name: "name", LastName: "lastName", Age: 19, Height: 180, Weight: 75}
-	err := ValidateStruct(user, CustomValidator{
+	err := validator.Validate(user, validator.CustomValidator{
 		Tag: "text",
 		Validator: func(_ interface{}, _ []string) error {
 			return nil
@@ -39,7 +40,7 @@ func TestValidateStruct(t *testing.T) {
 
 	// invalid ID
 	user = User{Id: "id", Name: "name", LastName: "lastName", Age: 19, Height: 180, Weight: 75}
-	err = ValidateStruct(user)
+	err = validator.Validate(user)
 
 	multiErr := new(MultiError)
 
@@ -49,7 +50,7 @@ func TestValidateStruct(t *testing.T) {
 
 	// invalid name
 	user = User{Id: validUUID, Name: "name007", LastName: "lastName", Age: 19, Height: 180, Weight: 75}
-	err = ValidateStruct(user)
+	err = validator.Validate(user)
 
 	assert.Error(t, err)
 	assert.ErrorAs(t, err, multiErr)
@@ -57,14 +58,14 @@ func TestValidateStruct(t *testing.T) {
 
 	// name is too long
 	user = User{Id: validUUID, Name: "abcdefghijklmnopqrstuvwxyz", LastName: "lastName", Age: 19, Height: 180, Weight: 75}
-	err = ValidateStruct(user)
+	err = validator.Validate(user)
 
 	assert.Error(t, err)
 	assert.ErrorAs(t, err, multiErr)
 	assert.Equal(t, 1, len(err.(MultiError).Unwrap()))
 	// empty name
 	user = User{Id: validUUID, Name: "", LastName: "lastName", Age: 19}
-	err = ValidateStruct(user)
+	err = validator.Validate(user)
 
 	assert.Error(t, err)
 	assert.ErrorAs(t, err, multiErr)
@@ -72,7 +73,7 @@ func TestValidateStruct(t *testing.T) {
 
 	// missing required lastName
 	user = User{Id: validUUID, Name: "name", Age: 19, Height: 180, Weight: 75}
-	err = ValidateStruct(user)
+	err = validator.Validate(user)
 
 	assert.Error(t, err)
 	assert.ErrorAs(t, err, multiErr)
@@ -80,7 +81,7 @@ func TestValidateStruct(t *testing.T) {
 
 	// too old
 	user = User{Id: validUUID, Name: "name", LastName: "lastName", Age: 99, Height: 180, Weight: 75}
-	err = ValidateStruct(user)
+	err = validator.Validate(user)
 
 	assert.Error(t, err)
 	assert.ErrorAs(t, err, multiErr)
@@ -88,7 +89,7 @@ func TestValidateStruct(t *testing.T) {
 
 	// terribly wrong
 	user = User{Id: "ba3ad9e176ae", Name: "y", LastName: "lastName", Age: 8}
-	err = ValidateStruct(user)
+	err = validator.Validate(user)
 
 	assert.Error(t, err)
 	assert.ErrorAs(t, err, multiErr)
