@@ -23,24 +23,26 @@ type MultiError interface {
 
 func TestValidate(t *testing.T) {
 	assert.Panics(t, func() {
-		_ = validator.Validate("abc")
+		_ = validator.New[string]()
 	})
 
-	validUUID := "ba6516aa-3cb8-4592-b3cf-ba3ad9e176ae"
-
-	user := User{Id: validUUID, Name: "name", LastName: "lastName", Age: 19, Height: 180, Weight: 75}
-	err := validator.Validate(user, validator.CustomValidator{
+	val := validator.New[User](validator.CustomValidator{
 		Tag: "text",
 		Validator: func(_ interface{}, _ []string) error {
 			return nil
 		},
 	})
 
+	validUUID := "ba6516aa-3cb8-4592-b3cf-ba3ad9e176ae"
+
+	user := User{Id: validUUID, Name: "name", LastName: "lastName", Age: 19, Height: 180, Weight: 75}
+	err := val.Validate(user)
+
 	assert.NoError(t, err)
 
 	// invalid ID
 	user = User{Id: "id", Name: "name", LastName: "lastName", Age: 19, Height: 180, Weight: 75}
-	err = validator.Validate(user)
+	err = val.Validate(user)
 
 	multiErr := new(MultiError)
 
@@ -50,7 +52,7 @@ func TestValidate(t *testing.T) {
 
 	// invalid name
 	user = User{Id: validUUID, Name: "name007", LastName: "lastName", Age: 19, Height: 180, Weight: 75}
-	err = validator.Validate(user)
+	err = val.Validate(user)
 
 	assert.Error(t, err)
 	assert.ErrorAs(t, err, multiErr)
@@ -58,14 +60,14 @@ func TestValidate(t *testing.T) {
 
 	// name is too long
 	user = User{Id: validUUID, Name: "abcdefghijklmnopqrstuvwxyz", LastName: "lastName", Age: 19, Height: 180, Weight: 75}
-	err = validator.Validate(user)
+	err = val.Validate(user)
 
 	assert.Error(t, err)
 	assert.ErrorAs(t, err, multiErr)
 	assert.Equal(t, 1, len(err.(MultiError).Unwrap()))
 	// empty name
 	user = User{Id: validUUID, Name: "", LastName: "lastName", Age: 19}
-	err = validator.Validate(user)
+	err = val.Validate(user)
 
 	assert.Error(t, err)
 	assert.ErrorAs(t, err, multiErr)
@@ -73,7 +75,7 @@ func TestValidate(t *testing.T) {
 
 	// missing required lastName
 	user = User{Id: validUUID, Name: "name", Age: 19, Height: 180, Weight: 75}
-	err = validator.Validate(user)
+	err = val.Validate(user)
 
 	assert.Error(t, err)
 	assert.ErrorAs(t, err, multiErr)
@@ -81,7 +83,7 @@ func TestValidate(t *testing.T) {
 
 	// too old
 	user = User{Id: validUUID, Name: "name", LastName: "lastName", Age: 99, Height: 180, Weight: 75}
-	err = validator.Validate(user)
+	err = val.Validate(user)
 
 	assert.Error(t, err)
 	assert.ErrorAs(t, err, multiErr)
@@ -89,7 +91,7 @@ func TestValidate(t *testing.T) {
 
 	// terribly wrong
 	user = User{Id: "ba3ad9e176ae", Name: "y", LastName: "lastName", Age: 8}
-	err = validator.Validate(user)
+	err = val.Validate(user)
 
 	assert.Error(t, err)
 	assert.ErrorAs(t, err, multiErr)

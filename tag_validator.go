@@ -48,10 +48,15 @@ type CustomValidator struct {
 	Validator Validator
 }
 
-// ValidateStruct traverse all the struct fields and validates attributes marked to be validated
-func Validate(s interface{}, opts ...CustomValidator) error {
-	if reflect.TypeOf(s).Kind() != reflect.Struct {
-		panic("input should be a struct")
+type validator[T any] struct {
+	validators map[string]Validator
+}
+
+// New creates a new validator for the struct of type [T].
+func New[T any](opts ...CustomValidator) *validator[T] {
+	var v T
+	if reflect.TypeOf(v).Kind() != reflect.Struct {
+		panic("[T] should be a struct")
 	}
 
 	validators := map[string]Validator{
@@ -64,6 +69,13 @@ func Validate(s interface{}, opts ...CustomValidator) error {
 		validators[opt.Tag] = opt.Validator
 	}
 
+	return &validator[T]{
+		validators: validators,
+	}
+}
+
+// ValidateStruct traverse all the struct fields and validates attributes marked to be validated
+func (vl *validator[T]) Validate(s T) error {
 	// ValueOf returns a Value representing the run-time data
 	v := reflect.ValueOf(s)
 	errs := make([]error, 0, v.NumField())
@@ -76,7 +88,7 @@ func Validate(s interface{}, opts ...CustomValidator) error {
 			continue
 		}
 		// Get a validator that corresponds to a tag
-		err := check(validators, tag, v.Field(i).Interface())
+		err := vl.check(tag, v.Field(i).Interface())
 		// Append error to results
 		if err != nil {
 			errs = append(errs, fmt.Errorf("%s %s", v.Type().Field(i).Name, err.Error()))
@@ -88,6 +100,17 @@ func Validate(s interface{}, opts ...CustomValidator) error {
 	}
 
 	return errors.Join(errs...)
+}
+
+// gets the appropriate validator based on field type
+func (vl *validator[T]) check(tag string, item interface{}) error {
+	args := strings.Split(tag, ",")
+	val, ok := vl.validators[args[0]]
+	if !ok || val == nil {
+		return nil
+	}
+
+	return val(item, args)
 }
 
 func numberValidator(val interface{}, args []string) error {
@@ -122,17 +145,6 @@ func stringValidator(val interface{}, args []string) error {
 
 func uuidValidator(val interface{}, _ []string) error {
 	return validateUUID(val.(string))
-}
-
-// gets the appropriate validator based on field type
-func check(validators map[string]Validator, tag string, item interface{}) error {
-	args := strings.Split(tag, ",")
-	val, ok := validators[args[0]]
-	if !ok || val == nil {
-		return nil
-	}
-
-	return val(item, args)
 }
 
 func validateNumber[T number](min, max, val T) error {
